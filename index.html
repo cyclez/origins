@@ -1416,19 +1416,14 @@
         if (m.health > 0)
           summ.push("" + m.position.x.toFixed(2) + "~" + m.position.z.toFixed(2) + "~" + m.health.toFixed(2) + '~' + m.faith); //FAITH perché lo prende?
       }
-
-      //Handler array maps AI IDs to their respective call functions
-      const handlers = [null, askGemini, askClaude, askRandom, askGroq];
-      const creaturesData = summ.join('^'); //All Creatures Parameters
-
-      try {
-        //Calls the corresponding AI with last action and creatures data
-        const result = await handlers[uptoAI](creaturesData, glast[uptoAI]); // glast[god] = m.action; Rows 1469-1476
-        if (result.success) {
-          doGodsWork(uptoAI, JSON.parse(result.message));
-        }
-      } catch (error) {
-        console.error(`God ${uptoAI} failed:`, error);
+      xmlhttp = GetXmlHttpObject();
+      //var url = "Filename Root" + AI Id + ".php?lst=" + Last God's action performed[uptoAI] + "&s=" + All Creatures Parameters
+      var url = "entities/gods/calls/ajaxgod" + uptoAI + ".php?lst=" + glast[uptoAI] + "&s=" + summ.join('^'); // glast[god] = m.action; Rows 1469-1476
+      switch (uptoAI) {
+        case 1: xmlhttp.onreadystatechange = stateChanged1; break;
+        case 2: xmlhttp.onreadystatechange = stateChanged2; break;
+        case 3: xmlhttp.onreadystatechange = stateChanged3; break;
+        case 4: xmlhttp.onreadystatechange = stateChanged4; break;
       }
 
       setTimeout(askGod, 5000); //Call again askGod() in 5 seconds
