@@ -1,7 +1,7 @@
 // RANDOM HANDLER
 // SONNET 4.5
 
-import { promptText } from "../prompting/promptLogic";
+import { promptText } from "../prompting/promptLogic.js";
 
 export async function askRandom(creaturesData, lastAction) {
     try {
