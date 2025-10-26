@@ -1414,7 +1414,7 @@
       }
       xmlhttp = GetXmlHttpObject();
       //var url = "Filename Root" + AI Id + ".php?lst=" + Last God's action performed[uptoAI] + "&s=" + All Creatures Parameters
-      var url = "ajaxgod" + uptoAI + ".php?lst=" + glast[uptoAI] + "&s=" + summ.join('^'); // glast[god] = m.action; Rows 1469-1476
+      var url = "entities/gods/calls/ajaxgod" + uptoAI + ".php?lst=" + glast[uptoAI] + "&s=" + summ.join('^'); // glast[god] = m.action; Rows 1469-1476
       switch (uptoAI) {
         case 1: xmlhttp.onreadystatechange = stateChanged1; break;
         case 2: xmlhttp.onreadystatechange = stateChanged2; break;
