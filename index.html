@@ -37,6 +37,7 @@
     import { askClaude } from './entities/gods/ai-handlers/aiCallGod2.js';
     import { askRandom } from './entities/gods/ai-handlers/aiCallGod3.js';
     import { askGroq } from './entities/gods/ai-handlers/aiCallGod4.js';
+    import { askOllama } from './entities/gods/ai-handlers/aiCallGod5.js';
     const world = new CANNON.World({
       gravity: new CANNON.Vec3(0, -9.82, 0)
     });
@@ -1405,7 +1406,7 @@
     var uptoAI = 1;
 
     /* askGod() ASYNC VERSION */
-    async function askGod() { //5 seconds loop - which God is operating the Turn - encoding of the url with creatures data
+    async function askGodOLD() { //5 seconds loop - which God is operating the Turn - encoding of the url with creatures data
       if (++uptoAI > 3) uptoAI = 1; //Avoids the same god to operate twice. Set 5 to operate with RNG God
 
       /* Creates Creatures Array */
@@ -1418,7 +1419,7 @@
       }
 
       //Handler array maps AI IDs to their respective call functions
-      const handlers = [null, askGemini, askClaude, askRandom, askGroq];
+      const handlers = [null, askGemini, askClaude, askRandom, askGroq, askOllama];
       const creaturesData = summ.join('^'); //All Creatures Parameters
 
       try {
@@ -1429,6 +1430,41 @@
         }
       } catch (error) {
         console.error(`God ${uptoAI} failed:`, error);
+      }
+
+      setTimeout(askGod, 5000); //Call again askGod() in 5 seconds
+    }
+
+    var uptoAI = 1;
+
+    async function askGod() {
+      // Cicla tra tutte e 5 le AI per la visualizzazione
+      if (++uptoAI > 5) uptoAI = 1;
+
+      /* Creates Creatures Array */
+      let l = creatures.length;
+      let summ = [];
+      for (let i = 0; i < l; i++) {
+        let m = creatures[i];
+        if (m.health > 0)
+          summ.push("" + m.position.x.toFixed(2) + "~" + m.position.z.toFixed(2) + "~" + m.health.toFixed(2) + '~' + m.faith);
+      }
+
+      // Usa sempre Ollama (god5) as LLM
+      let actualBackend = 5;
+
+      //Handler array maps AI IDs to their respective call functions
+      const handlers = [null, askGemini, askClaude, askRandom, askGroq, askOllama];
+      const creaturesData = summ.join('^'); //All Creatures Parameters
+
+      try {
+        //Calls Ollama but displays as uptoAI (1-5)
+        const result = await handlers[actualBackend](creaturesData, glast[uptoAI]);
+        if (result.success) {
+          doGodsWork(uptoAI, JSON.parse(result.message)); // uptoAI for the fake visualization
+        }
+      } catch (error) {
+        console.error(`God ${uptoAI} failed (using Ollama):`, error);
       }
 
       setTimeout(askGod, 5000); //Call again askGod() in 5 seconds
