@@ -4,7 +4,7 @@
     "type": "module",
     "scripts": {
         "start": "node server.js",
-        "dev": "node server.js"
+        "dev:watch": "nodemon --exec 'vercel dev --yes --listen 3000' --watch api --watch entities --delay 1"
     },
     "dependencies": {
         "express": "^4.18.2",

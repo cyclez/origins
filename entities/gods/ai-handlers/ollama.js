@@ -1,20 +1,13 @@
-// GEMINI HANDLER
-// SONNET 4.5
-import { promptText } from "../prompting/promptLogic.js";
-
+// OLLAMA HANDLER
+import { promptLogic } from "../prompting/promptLogic.js";
 
 const gods = ['Agnostic', 'Gemini', 'Claude', 'Grok', 'GPT'];
 
-export async function askGemini(creaturesData, lastAction) {
+export async function askOllama(creaturesData, lastAction) {
     try {
-        // Get API key from backend
-        const configResponse = await fetch(`/api/god1?creatures=${encodeURIComponent(creaturesData)}&lastAction=${encodeURIComponent(lastAction || '')}`);
-        const config = await configResponse.json();
-        const GEMINI_API_KEY = config.apiKey;
-
         const creatures = parseCreatures(creaturesData);
 
-        let prompt = promptText;
+        let prompt = promptLogic.promptText;
 
         if (lastAction) {
             prompt += ` Your last move was ${lastAction} and you cannot play the same action twice in a row, so you must choose a different action this time.`;
@@ -22,23 +15,25 @@ export async function askGemini(creaturesData, lastAction) {
 
         prompt += ` The creatures currently alive are :- ${JSON.stringify(creatures)}`;
 
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{ text: prompt }]
-                    }]
-                })
-            }
-        );
+        const response = await fetch('http://localhost:11434/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: 'llama3.2',
+                prompt: prompt,
+                stream: false,
+                options: {
+                    temperature: 0.3,
+                    num_predict: 1000,
+                    top_p: 0.9
+                }
+            })
+        });
 
         const data = await response.json();
-        const text = data.candidates[0].content.parts[0].text;
+        const text = data.response;
 
-        // Parse response (Gemini può avere formatting extra)
+        // Parse response
         const lines = text.split('\n').filter(line => line.trim());
         let jsonLine = lines.find(line => line.includes('{'));
 
@@ -51,7 +46,7 @@ export async function askGemini(creaturesData, lastAction) {
             message: jsonLine
         };
     } catch (error) {
-        console.error('Gemini error:', error);
+        console.error('Ollama error:', error);
         return { success: false };
     }
 }

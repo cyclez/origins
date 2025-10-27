@@ -33,11 +33,12 @@
     import * as THREE from 'three';
     import * as CANNON from "cannon-es";
     import * as BufferGeometryUtils from 'https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/utils/BufferGeometryUtils.js';
-    import { askGemini } from './entities/gods/ai-handlers/aiCallGod1.js';
-    import { askClaude } from './entities/gods/ai-handlers/aiCallGod2.js';
-    import { askRandom } from './entities/gods/ai-handlers/aiCallGod3.js';
-    import { askGroq } from './entities/gods/ai-handlers/aiCallGod4.js';
-    import { askOllama } from './entities/gods/ai-handlers/aiCallGod5.js';
+    import { askGemini } from './entities/gods/ai-handlers/gemini.js';
+    import { askClaude } from './entities/gods/ai-handlers/claude.js';
+    import { askRandom } from './entities/gods/ai-handlers/random.js';
+    import { askGroq } from './entities/gods/ai-handlers/gpt.js';
+    import { askOllama } from './entities/gods/ai-handlers/ollama.js';
+    import { godsData } from './entities/gods/gods.js';
     const world = new CANNON.World({
       gravity: new CANNON.Vec3(0, -9.82, 0)
     });
@@ -112,7 +113,7 @@
     let tcounter = 0;
     let dcounter = 0;
     let goodbad = 0;  // 0 = good, 1 = bad
-    let gods = ['Agnostic', 'Gemini', 'Claude', 'Amazon-Nova', 'GPT'];
+    let gods = godsData.names;
     let gcol = [0, 60, 300, 240, 360];
     let glast = ['', '', '', '', ''];
     const size = 128;
@@ -1419,7 +1420,7 @@
       }
 
       //Handler array maps AI IDs to their respective call functions
-      const handlers = [null, askGemini, askClaude, askRandom, askGroq, askOllama];
+      const handlers = godsData.handlers;
       const creaturesData = summ.join('^'); //All Creatures Parameters
 
       try {

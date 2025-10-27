@@ -1,7 +1,7 @@
 // CLAUDE HANDLER
 // SONNET 4.5
 
-import { promptText } from "../prompting/promptLogic.js";
+import { promptLogic } from "../prompting/promptLogic.js";
 
 const gods = ['Agnostic', 'Gemini', 'Claude', 'Grok', 'GPT'];
 
@@ -14,7 +14,7 @@ export async function askClaude(creaturesData, lastAction) {
 
         const creatures = parseCreatures(creaturesData);
 
-        let prompt = promptText;
+        let prompt = promptLogic.promptText;
 
         if (lastAction) {
             prompt += ` Your last move was ${lastAction} and you cannot play the same action twice in a row, so you must choose a different action this time.`;
