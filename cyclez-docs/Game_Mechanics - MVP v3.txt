@@ -1,144 +1,189 @@
 # Game Design Specification
 
+# TODO:
+- Global Variables
+- Creature or God parameters
+
+
 ## Entity System
 
 ### Core Attributes
-- **Health (HP)**: Spawn at 100
-- **Breed**: 0-100 (fertility/reproduction ability)
-- **Devotion**: 0-100 (religious dedication)
+- **Number of Creatures at start**: 20
+- **Health (HP)**: Spawn at 70hp. When converted, applies boost/nerf
+- **Breed**: 0-100 (fertility/reproduction ability). When converted, applies boost/nerf
+- **Devotion**: 0-100 (religious dedication @@@@ ACTIONS? @@@@)
 - **Faith**: Agnostic (default spawn) → Can be converted once to God 1, God 2, or God 3
 - **Emergency**: true if Health < 20
-
-
-
+    { - ALL creatures can enter CRY mode
+      - Only !Agnostic can enter SURVIVE mode: higher PICK radius (can pick boxes 20% farer than all the other creatures)
+    }
+    Note: Agnostics practically never enter Emergency (no time decay, spawn at 70HP, post-breed HP = 30). If Emergency triggered, only CRY available for Agnostics.
+    If Emergency is true:
+    - !Agnostic: CRY and SURVIVE both available with equal probability
+    - Agnostic: Only CRY available
 
 ### Constraints
-- Minimum HP to survive: 20
-- Minimum HP to Gather: 20
-- Maximum HP cap: 100 (cannot exceed)
-- Minimum HP to Breed: 70 (Agnostics CAN breed)
-- Minimum HP to Build: 70 /* NO MORE BUILD */
-
-@ Some Entities could die before getting a religion due to HP drain time + no rng picks of gathering. Some, don't survive.
+- Minimum HP to survive: health >0 //@cyclez look for Death Graphic animation trigger
+- Maximum HP cap: 100 (cannot exceed even if PICK is executed on the entity. can PICK anyway but no health up)
+- Minimum HP to Breed: 60 (Agnostics CAN breed)
+- Minimum HP to Help: 40 (Agnostics CANT help - can only RECEIVE help)
+- **Agnostics**: Not subject to time decay (no HP drain over time) - @frontend implementation needed
 
 ---
 
 ## Deities
 
-| Faith | Health Effect | Breed Effect | Breed Cost | Special Rules |
-|-------|--------------|--------------|------------|---------------|
-| **Agnos** | Neutral | N/A | N/A | Cannot Breed, only Gather/Nothing |
-| **God 1** | +25% | -30% | 50 HP | Health-focused strategy |
-| **God 2** | -20% | +30% Breed Capability, HP drop to 25 instead of 20 (for God 1 and 2)| 35 HP | Breed-focused (reduced cost) |
-| **God 3** | Neutral | Neutral | 50 HP | Balanced approach |
+| Faith | Health Effect | Breed Effect | Breed Cost | Post-Breed HP | Special Rules |
+|-------|--------------|--------------|------------|---------------|---------------|
+| **Agnos** | Neutral | Neutral | N/A | 30 | No time decay, spawn at 70HP, default NOTHING behavior |
+| **God 1** | +25% | -30% | 50 HP | 30 | Health-focused strategy |
+| **God 2** | -20% | +30% | 35 HP | 40 | Breed-focused (reduced cost, higher post-breed survival) |
+| **God 3** | Neutral | Neutral | 50 HP | 30 | Balanced approach |
 
-@ Each effect gets applied once, on adeption.
+@ Each effect gets applied once, on adoption.
 
 ### Conversion Mechanics
-- Gods can convert **Agnostic** entities to their Faith
+- Gods can convert **Agnostic** entities to their Faith -> godsData.names
+entities/gods/gods.js line 7
+export const godsData = {
+    names: ['Agnostic', 'Gemini', 'Claude', 'Random', 'GPT', 'Ollama'],
+    ..
+}
 - Conversion is **permanent** (no further conversions possible)
-- Conversion mechanic details: TBD
+- Conversion mechanic details: God Plays REVELATION
+
+
 
 ### Victory Condition
-First deity to complete Church construction (1000 HP donated)
+First deity to complete Church construction (15 Blocks donated)
 
 ---
 
 ## Actions
 
-### 1. BREED ❌ (Not Available to Agnostics)
+### 1. BREED ⌛ (Available to All, including Agnostics) (TO BE PARTIALLY IMPLEMENTED)
 
 **Requirements:**
-- Must have Faith (God 1, 2, or 3)
-- Minimum 70 HP
+- Minimum 60 HP
+- Available to ALL creatures (Agnostics CAN breed)
 
-**Duration:** 5 minutes (entity frozen in position)
+**Duration:** 30 seconds (entity frozen in position)
 
-**Cost:** -50 HP (God 1/3) OR -35 HP (God 2)
+**HP Cost & Post-Breed HP (by Faith):**
+- **Agnostic**: Cost N/A, Post-Breed HP → 30
+- **God 1**: Cost 50 HP, Post-Breed HP → 30 (Health +25% boost, Breed -30% penalty)
+- **God 2**: Cost 35 HP, Post-Breed HP → 40 (Health -20% penalty, Breed +30% boost, higher survival)
+- **God 3**: Cost 50 HP, Post-Breed HP → 30 (Neutral modifiers)
 
 **Result:**
-- Success OR Failure → HP drops to 20 (God 1 or 3) - HP drops to 25 (God 2)
+- Success OR Failure → HP drops to Post-Breed HP value (see above by Faith)
 - Success: +1 newborn entity (same Faith as parent)
-- Failure: No offspring, same HP penalty.
-- 8-minute cooldown (can only perform Nothing)
+- Failure: No offspring, same HP penalty
+- 1 minute cooldown (can only perform Nothing)
 
 **Offspring Stats:**
 - Inherits parent's Faith
-- Starts with 30-40 HP (random)
+- Starts with 70 HP (all faiths spawn at same HP)
 - Random Breed/Devotion (0-100)
-- 5-minute cooldown (can only perform Nothing)
+- 1-minute cooldown (can only perform Nothing)
 
 ---
 
-### 2. GATHER + BUILD ✅ (Available to All)
+### 2. PICK ✅ (Available to !Agnostic)
 
 **Requirements:**
 - Minimum 20 HP
-- Faith !Agnostic (won't survive if they remain Agnostic)
+- Faith !Agnostic (Agnostics don't need PICK - no time decay)
 
 **Mechanics:**
+- Pick Blocks and bring them to the Church //@cyclez check for PICK logic
+- Block can be: on the map, spawned via BLESS, spawned with user double click //@cyclez check map blocks not pick bug
+- Gains 20 HP (capped to 100HP)
+- **No cooldown** - can be performed repeatedly
 
-- Pick Blocks and bring them to the church
+**HP Gain (by Faith after conversion boost):**
+- **God 1**: 20 HP × 1.25 = 25 HP effective gain (Health +25% boost)
+- **God 2**: 20 HP × 0.80 = 16 HP effective gain (Health -20% penalty)
+- **God 3**: 20 HP (Neutral)
+
+**Note:** Agnostics are not subject to time decay, spawn at 70HP, and don't have PICK in their action pool
 
 ---
 
 ### 3. CRY ✅ (Available to All)
 
 **Requirements:**
-- Minimum < 20HP
+- HP < 20 (strictly less than 20)
 
 **Mechanics:**
-
-- Wait for Help of another Creature of the same Faith
+- Wait for SACRIFICE or HELP from another Creature to regain HP
+- Freeze in place
+- Available to ALL creatures (including Agnostics)
+- Part of Emergency state action pool
 
 ---
 
-### 4. SACRIFICE ✅ (Available to All)
+### 4. SACRIFICE ✅ (Available to the same FAITH or helping AGNOSTIC) @ica25-origins (TO BE IMPLEMENTED)
 
 **Requirements:**
 - Minimum 40 HP
+- Entity in CRY has to have the same FAITH or be AGNOSTIC
 
 **Mechanics:**
+- Help Creatures with CRY condition to regain their HP. You lose HP in SACRIFICE, and those HP goes to the creature in CRY state.
+- HP donated is 20% (base), Devotion donor parameter influences that percentage. Formula:
 
-- Help Creatures with CRY condition
+const extraLoss = 0.30 * Math.pow(devotion / 100, 2);
+
+- If helping an Agnostic in CRY, the helped creature gets converted to the religion of the entity performing SACRIFICE.
+
+**HP Loss (by Faith with deity effects):**
+- Base loss: 20% + Devotion-scaled extra loss
+- **God 1**: Loss calculated on higher HP pool (Health +25% boost)
+- **God 2**: Loss calculated on lower HP pool (Health -20% penalty)
+- **God 3**: Standard loss (Neutral)
 
 ---
 
-### 5. HELP ✅ (Available to All)
+### 5. HELP ✅ (Available to !Agnostic only) @ica25-origins (TO BE IMPLEMENTED)
 
 **Requirements:**
 - Minimum 40 HP
+- Faith !Agnostic (Agnostics CANNOT perform HELP, but can RECEIVE it)
 
 **Mechanics:**
-
 - Help Creatures with CRY condition
+- If helped Creature is Agnostic, it gets converted to the same faith as the helper
+- Mechanics TBD
 
 ---
 
-### 6. NOTHING ✅ (Available to All)
+### 6. NOTHING ✅ (Available to All) @cyclez check function
 
-**Behavior:** Random wandering with no resource interaction
+**Behavior:** Random wandering with no resource interaction. Can't make any action, just wander around. @cyclez movement has to be improved as PICK
 
 **When Mandatory:**
 - Newborn cooldown (30 seconds)
-- Post-Build cooldown (30 min)
 - Post-Breed cooldown (1 min)
-- HP below 20 (soft-lock state - HELP)
-- Agnostics default behavior
+- Agnostics default behavior (spawn state)
 
 ---
+
+
+@cyclez we need a function to control everything up here.
+
 
 ## Resources
 
 ### Blocks
 - Scattered across map, double click, Bless Action
-- Has to be bring to the church
-- There is comptition for it
+- Has to be brought to the church
+- There is competition for it
 
 ### Church Construction (1 for each Faith)
-- **Requirement:** X total blocks donated (cumulative per Faith)
-- **Progress:** Sum of all Build donations from followers
-- **Win Condition:** First church completed
+- **Requirement:** 15 total blocks donated (cumulative per Faith)
+- **Progress:** Sum of all Block donations from followers
+- **Win Condition:** First church completed (15 Blocks)
 
 ---
 
@@ -146,111 +191,182 @@ First deity to complete Church construction (1000 HP donated)
 ```
 ENTITY LIFECYCLE:
 
-[Spawn: 30-40 HP, Random Breed/Devotion, Faith = AGNOSTIC]
+[Spawn: 70 HP, Random Breed/Devotion, Faith = AGNOSTIC]
     |
     v
-┌─────────────────────────────────────┐
-│   AGNOSTIC STATE (Initial)          │
-│   Actions: GATHER or NOTHING only   │
-└─────────────────────────────────────┘
+┌───────────────────────────────────────┐
+│   AGNOSTIC STATE (Initial)            │
+│   Actions: NOTHING (default spawn)    │
+│   Special: No time decay (no HP loss) │
+│   Can: BREED (≥60 HP), CRY (<20 HP)   │
+│   Cannot: PICK, HELP, SURVIVE mode    │
+└───────────────────────────────────────┘
     |
     v
-[CONVERSION EVENT] ← Gods actively recruit
+[CONVERSION EVENT] ← Gods play REVELATION to recruit
     |
     v
-┌─────────────────────────────────────┐
-│   FAITHFUL STATE (God 1/2/3)        │
-│   Gains: BREED, BUILD actions       │
-│   Effects: Deity modifiers applied  │
-└─────────────────────────────────────┘
+┌───────────────────────────────────────┐
+│   FAITHFUL STATE (God 1/2/3)          │
+│   Gains: PICK, HELP, SURVIVE actions  │
+│   Effects: Deity modifiers applied    │
+│   Time Decay: Active (HP loss enabled)│
+│   Emergency: HP < 20 → CRY or SURVIVE │
+└───────────────────────────────────────┘
     |
     v
-┌─────────────────────────────────────┐
-│     DECISION LOOP (Every Tick)      │
-└─────────────────────────────────────┘
+┌───────────────────────────────────────┐
+│     DECISION LOOP (Every Tick)        │
+└───────────────────────────────────────┘
 ```
 
 ### HP Management
-- HP Range: 20 (soft minimum) to 100 (hard cap)
-- Gather: Restores HP, stops at 100
-- At HP = 100: Gather selection → converts to NOTHING
-- Below HP = 20: Permanent NOTHING (soft-lock)
+- HP Range: 0 (death) to 100 (hard cap)
+- **PICK**: Restores +20 HP base (modified by deity effects), no cooldown
+  - God 1: +25 HP effective (Health +25% boost)
+  - God 2: +16 HP effective (Health -20% penalty)
+  - God 3: +20 HP (Neutral)
+- At HP = 100: PICK still available but grants no HP increase
+- HP < 20 (strictly): Emergency state activated
+  - **!Agnostic**: CRY or SURVIVE mode (equal probability)
+  - **Agnostic**: Only CRY mode (SURVIVE impossible)
 
-### Breed Mechanics (5-minute duration)
-- Requires HP ≥ 70
-- Entity frozen in position for 5 minutes
-- Random success check (based on Breed parameter)
-- HP Cost: -50 HP (God 1/3) OR -35 HP (God 2)
-- Result: HP → 20 (God 1/3) OR HP → 25 (God 2) (regardless of success)
-  - Success: +1 Entity (30-40 HP, same Faith, 5-min cooldown)
-  - Failure: No offspring
+### Time Decay System
+- **Agnostics**: NO time decay (HP remains stable at spawn value)
+- **Faithful (!Agnostic)**: Subject to time decay (HP drains over time)
+- **Implementation**: @frontend - Agnostics immune to HP drain mechanic
 
-### Build Mechanics
-- Requires HP ≥ 70
-- Donation: Variable % based on Devotion (10%-99%)
-- Church Progress += Donated HP
-- Post-Donation:
-  - 8-min cooldown (Nothing only)
-  - Random HP target (20-70) assigned
-  - If HP < 20: PERMANENT Nothing state (sacrifice complete)
+### Emergency & Support Mechanics
+- **Emergency State** (HP < 20, ALL creatures can trigger):
+  - **!Agnostic**: Two actions in pool with equal probability:
+    1. **SURVIVE mode**: PICK with +20% radius
+    2. **CRY mode**: Freeze and wait for help
+  - **Agnostic**: Only CRY mode available (SURVIVE impossible - no PICK access)
+  
+- **SACRIFICE** (HP ≥ 40, !Agnostic helping same Faith or Agnostic):
+  - Donor loses 20% HP (base) + Devotion-scaled penalty
+  - Formula: `extraLoss = 0.30 * Math.pow(devotion / 100, 2)`
+  - HP transfer goes to CRY entity
+  - If helping Agnostic: Converts them to donor's Faith
+  - Deity effects apply to HP calculation
+  
+- **HELP** (HP ≥ 40, !Agnostic only):
+  - Assists CRY entities
+  - If helping Agnostic: Converts them to helper's Faith
+  - Mechanics TBD (@ica25-origins)
 
-### Deity Effects (Applied at Conversion)
-- God 1: Health × 1.40, Breed × 0.70, Breed Cost = 50 HP, Post-Breed HP = 20
-- God 2: Health × 0.80, Breed × 1.50, Breed Cost = 35 HP, Post-Breed HP = 25
-- God 3: No modifiers, Breed Cost = 50 HP, Post-Breed HP = 20
+### Breed Mechanics (30-second duration)
+- Requires HP ≥ 60 (available to ALL, including Agnostics)
+- Entity frozen in position for 30 seconds
+- Random success check (based on Breed parameter, modified by deity effects)
+  - God 1: Breed × 0.70 (30% penalty)
+  - God 2: Breed × 1.30 (30% boost)
+  - God 3: Breed × 1.00 (Neutral)
+  - Agnostic: Breed × 1.00 (Neutral)
+
+**Breed Costs & Results (by Faith):**
+- **Agnostic**: No HP cost, Post-Breed HP → 30
+- **God 1**: -50 HP cost, Post-Breed HP → 30 (Health boosted followers)
+- **God 2**: -35 HP cost, Post-Breed HP → 40 (Cheaper, higher survival)
+- **God 3**: -50 HP cost, Post-Breed HP → 30 (Standard)
+
+**Offspring:**
+- Success: +1 Entity (70 HP, same Faith as parent, 1-min cooldown)
+- Failure: No offspring, same HP penalty
+- Post-Breed: 1-minute cooldown (Nothing only)
+
+### Church Building (Block Donation)
+- Requires: Blocks (from map, BLESS action, or user double-click)
+- Entity must bring Block to Church via PICK action
+- Each Block donation: +1 to Church progress
+- Victory Condition: First Faith to donate 15 Blocks wins
+- Competition: Multiple entities may compete for same Block
+
+### Deity Effects Summary (Applied at Conversion)
+- **God 1**: 
+  - Health × 1.25 (higher HP pool, better PICK gains, more HP to sacrifice)
+  - Breed × 0.70 (30% fertility penalty)
+  - Breed Cost: 50 HP → Post-Breed HP: 30
+  
+- **God 2**: 
+  - Health × 0.80 (lower HP pool, worse PICK gains, less HP to sacrifice)
+  - Breed × 1.30 (30% fertility boost)
+  - Breed Cost: 35 HP → Post-Breed HP: 40 (cheaper breeding, better survival)
+  
+- **God 3**: 
+  - Health × 1.00 (neutral)
+  - Breed × 1.00 (neutral)
+  - Breed Cost: 50 HP → Post-Breed HP: 30
+  
+- **Agnostic**: 
+  - No time decay (immune to HP drain)
+  - No deity modifiers
+  - Breed: No cost → Post-Breed HP: 30
 
 ---
 
 ## Action Probabilities
 
-### Agnostic Entities (All HP levels)
+### Agnostic Entities (No time decay - stable HP)
 ```
-IF HP < 100:
-  - GATHER: 50%
-  - NOTHING: 50%
-
-IF HP = 100:
-  - NOTHING: 100% (Gather blocked)
-```
-
-### Faithful Entities - HP ≥ 70 (Full Actions Available)
-```
-IF HP < 100:
+IF HP ≥ 60:
   - BREED: 0-35% (scaled by Breed parameter)
     └─ Breed = 0   → 0% chance
     └─ Breed = 50  → 17.5% chance
     └─ Breed = 100 → 35% chance
+  - NOTHING: 65-100%
 
-  - BUILD: 10-35% (scaled by Devotion parameter)
-    └─ Devotion = 0   → 10% chance
-    └─ Devotion = 50  → 22.5% chance
-    └─ Devotion = 95+ → 35% chance
+IF HP 20-59:
+  - NOTHING: 100% (no PICK available, no actions until HP naturally decays - but won't happen without time decay)
 
-  - GATHER: 30-50%
-  - NOTHING: 30-50%
+IF HP < 20 (Emergency - rare, only post-breed at 30 HP then decay impossible):
+  - CRY: 100% (SURVIVE not available - no PICK access)
+  
+Note: Agnostics spawn at 70HP and maintain it (no decay). Emergency state practically impossible except theoretical edge case.
+```
+
+### Faithful Entities - HP ≥ 60 (Full Actions Available)
+```
+IF HP < 100:
+  - BREED: 0-35% (scaled by Breed parameter × deity modifier)
+    └─ God 1: Breed × 0.70 (reduced chance)
+    └─ God 2: Breed × 1.30 (increased chance)
+    └─ God 3: Breed × 1.00 (neutral)
+
+  - PICK: 30-40%
+  - HELP: Variable (when CRY entities nearby)
+  - NOTHING: 25-35%
 
 IF HP = 100:
-  - BREED: 0-35% (scaled by Breed parameter)
-  - BUILD: 10-35% (scaled by Devotion parameter)
-  - GATHER: 0% → converts to NOTHING
-  - NOTHING: 30-50% + (redirected Gather attempts)
+  - BREED: 0-35% (scaled by Breed parameter × deity modifier)
+  - PICK: 30-40% (no HP gain, but Block donation available)
+  - HELP: Variable (when CRY entities nearby)
+  - NOTHING: 25-35%
 ```
 
-### Faithful Entities - HP 20-69 (Limited Actions)
+### Faithful Entities - HP 20-59 (Limited Actions)
 ```
-- GATHER: 50%
+- PICK: 50% (gains 25HP/16HP/20HP for God1/God2/God3)
 - NOTHING: 50%
 ```
 
-### HP < 20 (Soft-locked - Sacrificial State)
+### Faithful Entities - HP < 20 (Emergency State - !Agnostic only)
 ```
-- NOTHING: 100%
+- CRY: 50% (frozen, seeking SACRIFICE/HELP)
+- SURVIVE: 50% (PICK with +20% radius)
+```
+
+### Support Actions (HP ≥ 40, !Agnostic only)
+```
+When encountering CRY entity:
+  - SACRIFICE: Variable % (based on Faith compatibility and Devotion)
+  - HELP: Available to all !Agnostic with HP ≥ 40
 ```
 
 ### Cooldown States
 ```
-- Newborn: NOTHING 100% (5 minutes)
-- Post-Build: NOTHING 100% (8 minutes)
+- Newborn: NOTHING 100% (1 minute)
+- Post-Breed: NOTHING 100% (1 minute)
 ```
 
 ---
@@ -259,16 +375,30 @@ IF HP = 100:
 
 | Deity | Strategy | Strength | Weakness |
 |-------|----------|----------|----------|
-| **God 1** | Slow growth, high durability | Followers survive longer, steady donations | Slow population expansion |
-| **God 2** | Fast breeding, fragile | Rapid follower growth, cheaper breeding | Lower HP = more deaths, weaker donations |
-| **God 3** | Balanced | No extreme weaknesses | No extreme strengths |
+| **Agnostic** | Passive survival | No time decay (stable 70HP), can breed without cost, immune to HP drain | Cannot PICK/HELP/SURVIVE, stuck at NOTHING, no church contribution |
+| **God 1** | Slow growth, high durability | +25% HP pool (better survival, more PICK gains +25HP, more SACRIFICE capacity), steady donors | -30% Breed penalty (slower population), lower post-breed HP (30) |
+| **God 2** | Fast breeding, fragile | +30% Breed boost (rapid population), cheaper breeding (35HP vs 50HP), higher post-breed survival (40HP) | -20% HP penalty (16HP PICK gains, more vulnerable to time decay), higher death risk |
+| **God 3** | Balanced | No extreme weaknesses, predictable outcomes, standard mechanics | No extreme strengths, no special advantages, middle-of-road performance |
 
 ---
 
 ## Key Design Pillars
 
-1. **Conversion is Critical**: Agnostics are useless for church-building → Gods must actively recruit
-2. **High Devotion = Martyrdom**: Entities with 95-100% Devotion will sacrifice themselves entirely (soft-lock is INTENTIONAL)
-3. **Breed Duration**: 5-minute frozen state creates strategic vulnerability (entities cannot gather or perform other actions during breeding)
-4. **God 2 Advantage**: Reduced breed cost (35 HP vs 50 HP) and higher post-breed HP (25 vs 20) enables faster population growth despite HP penalty
-5. **No Entity Death**: Soft-locked entities (HP < 20) remain on map doing Nothing (thematic "living sacrifice")
+1. **Conversion is Critical**: Agnostics are stable but passive → Gods must recruit to gain productive followers
+2. **Agnostic Immunity**: No time decay creates survivor advantage but limits actions (no PICK/HELP/SURVIVE)
+3. **Emergency System**: CRY state creates dependency on community support (SACRIFICE/HELP mechanics)
+4. **SURVIVE mode**: Exclusive to !Agnostic (Agnostics immune to time decay, won't reach HP < 20 naturally)
+5. **Breed Duration**: 30-second frozen state creates strategic vulnerability (entities cannot pick or help during breeding)
+6. **God 2 Advantage**: Despite -20% HP penalty, benefits from:
+   - +30% Breed boost (faster reproduction)
+   - 35 HP breed cost (vs 50 HP for God 1/3)
+   - 40 HP post-breed survival (vs 30 HP for God 1/3)
+7. **God 1 Advantage**: Despite -30% Breed penalty, benefits from:
+   - +25% HP pool (87.5 HP effective max)
+   - +25 HP per PICK (vs 20/16 for God 3/2)
+   - More HP for SACRIFICE donations
+8. **Block Competition**: Entities compete for limited Blocks → strategic resource management required
+9. **Faith-Based Actions**: Only faithful entities have full action pool (PICK/HELP/SURVIVE), creating conversion incentive
+10. **Devotion as Double-Edged Sword**: High Devotion increases SACRIFICE cost, creating strategic martyrdom decisions
+11. **Spawn Dynamics**: All creatures spawn as Agnostics at 70HP doing NOTHING → early game is conversion race
+12. **Deity Tradeoffs**: Each deity has clear mathematical tradeoffs in HP, Breed, and survival mechanics
