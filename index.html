@@ -629,7 +629,7 @@
 
     let creatures = [];
     let me;
-    for (me = 0; me < 6; me++) {
+    for (me = 0; me < 20; me++) { //number of inital creatures
       let c = new SpriteCreature(1.4, Math.random() * 10 - 5, Math.random() * 8 - 4, 1 + Math.floor(me / 2));
       creatures.push(c);
       c.castShadow = true;
@@ -1128,8 +1128,8 @@
 
     let Temples = [[]];
 
-    for (let e = 1; e < 4; e++) {
-      let ang = e * twopi / 3 + Math.random();
+    for (let e = 1; e < 6; e++) {
+      let ang = e * twopi / 5 + Math.random();
       let dst = 25 + Math.random() * 25;
       let x = dst * Math.cos(ang);
       let z = dst * Math.sin(ang);
@@ -1355,11 +1355,11 @@
               if (Math.abs(c.position.y - danger.box.position.y) < 3)
                 if (Math.abs(c.position.z - danger.box.position.z) < 3) {
                   var dst = 1 + Math.hypot(c.position.x - danger.box.position.x, c.position.y - danger.box.position.y);
-                  c.health -= 6 * danger.strength / dst; //Curse Damage formula
+                  c.health -= 6 * danger.strength / dst; //CURSE HP DECAY FORMULA
                 }
           });
           if (--c.cooldown <= 0) c.currentProg = getProgram();
-          c.health -= 0.03 * Math.sqrt(c.creatureSize); //CURSE FORMULA
+          c.health -= 0.01 * Math.sqrt(c.creatureSize); //NATURAL HP DECAY FORMULA - lowered from 0.03
           if (c.health <= 0) {
             scene.remove(c);
             world.removeBody(c.body);
