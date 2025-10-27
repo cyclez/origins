@@ -852,8 +852,17 @@
 
     function placeblock() {
       let c = creatures[me];
+
+      // Safety check: if Faith is 0 (Agnostic) or Temples doesn't exists, change program
+      if (c.faith === 0 || !Temples[c.faith] || Temples[c.faith].length === 0) {
+        console.warn('Creature has no valid temple (faith:', c.faith, ')');
+        c.currentProg = getProgram(); // torna a un altro comportamento
+        return;
+      }
+
       let tmp = Temples[c.faith];
       c.moveToward(tmp[0], tmp[1], 0.1);
+
       if (c.lockedTarget > 0) {
         let t = targets.get(c.lockedTarget);
         try {
@@ -864,6 +873,7 @@
           console.error('c.body:', c);
         }
       }
+
       let h = Math.hypot(c.body.position.x - tmp[0], c.body.position.z - tmp[1]);
       if (h < 9) {
         let t = targets.get(c.lockedTarget);
@@ -921,10 +931,18 @@
     }
 
     function getProgram() {
+      // Safety check: assicurati che me sia valido
+      if (me < 0 || me >= creatures.length || !creatures[me]) {
+        console.warn('getProgram called with invalid me:', me);
+        return haverest; // fallback sicuro
+      }
+
       let r = Math.random();
       creatures[me].lockedTarget = 0;
       creatures[me].cooldown = 250 + Math.random() * 200;
+
       if (creatures[me].health < 25) r += 0.4;
+
       if (r < 0.2) {
         creatures[me].cooldown = 200;
         return haverest;
@@ -1281,7 +1299,7 @@
           let c = creatures[me];
           if (c.currentProg === null)
             c.currentProg = getProgram();
-          if (c.mode == 0) c.currentProg();
+          if (c.mode == 0 && typeof c.currentProg === 'function') c.currentProg();
           c.body.position.x = envclamp(c.body.position.x);
           c.body.position.z = envclamp(c.body.position.z);
           c.body.position.y = 1.2 * c.creatureSize + terrain.getHeight(c.body.position.x, c.body.position.z);
