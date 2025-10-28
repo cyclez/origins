@@ -1,0 +1,2 @@
+ - Remove Halo from Agnostics
+ - Creatures don't move enough
