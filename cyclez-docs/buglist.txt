@@ -1,0 +1,4 @@
+- Agnostic Pick but have no temple to put blocks in
+- Creatures with 0 HP are still around
+- Creatures get stucked together
+..more to be added

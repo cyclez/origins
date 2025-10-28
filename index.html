@@ -33,12 +33,18 @@
     import * as THREE from 'three';
     import * as CANNON from "cannon-es";
     import * as BufferGeometryUtils from 'https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/utils/BufferGeometryUtils.js';
-    import { askGemini } from './entities/gods/ai-handlers/aiCallGod1.js';
-    import { askClaude } from './entities/gods/ai-handlers/aiCallGod2.js';
-    import { askRandom } from './entities/gods/ai-handlers/aiCallGod3.js';
-    import { askGroq } from './entities/gods/ai-handlers/aiCallGod4.js';
+    import { askGemini } from './entities/gods/ai-handlers/gemini.js';
+    import { askClaude } from './entities/gods/ai-handlers/claude.js';
+    import { askRandom } from './entities/gods/ai-handlers/random.js';
+    import { askGroq } from './entities/gods/ai-handlers/gpt.js';
+    import { askOllama } from './entities/gods/ai-handlers/ollama.js';
+    import { godsData } from './entities/gods/gods.js';
+    import { CreatureConfig } from './entities/creatures/creatures.js';
+    import { TimingConfig } from './backend/timingConfig.js';
+    import { WorldConfig } from './backend/worldConfig.js';
+
     const world = new CANNON.World({
-      gravity: new CANNON.Vec3(0, -9.82, 0)
+      gravity: new CANNON.Vec3(0, WorldConfig.physics.gravity, 0)
     });
 
     class TerrainGenerator {
@@ -111,8 +117,8 @@
     let tcounter = 0;
     let dcounter = 0;
     let goodbad = 0;  // 0 = good, 1 = bad
-    let gods = ['Agnostic', 'Gemini', 'Claude', 'Amazon-Nova', 'GPT'];
-    let gcol = [0, 60, 300, 240, 360];
+    let gods = godsData.names;
+    let gcol = godsData.colors.map(c => c.hue);
     let glast = ['', '', '', '', ''];
     const size = 128;
     const segments = 512;
@@ -360,7 +366,7 @@
     world.addBody(pgbody);
 
     class SpriteCreature extends THREE.Group {
-      constructor(size = 1, x = 0, z = 0, faith = 1) {
+      constructor(size = 1, x = 0, z = 0, faith = 0) {
         super();
 
         this.creatureSize = size;
@@ -375,7 +381,7 @@
         this.cooldown = 0;
         this.lockedTarget = 0;
         this.currentProg = null;
-        this.health = 100;
+        this.health = CreatureConfig.spawn.health;
         this.faith = faith;
         this.mode = 0;
         this.birthdate = Date.now();
@@ -627,8 +633,8 @@
 
     let creatures = [];
     let me;
-    for (me = 0; me < 6; me++) {
-      let c = new SpriteCreature(1.4, Math.random() * 10 - 5, Math.random() * 8 - 4, 1 + Math.floor(me / 2));
+    for (me = 0; me < CreatureConfig.spawn.creatureNumber; me++) { //number of inital creatures
+      let c = new SpriteCreature(1.4, Math.random() * 10 - 5, Math.random() * 8 - 4, 0); //Agnostic at beginning
       creatures.push(c);
       c.castShadow = true;
       scene.add(c);
@@ -812,13 +818,14 @@
           c.moveToward(t.box.position.x, t.box.position.z, 0.1);
           if (targets.get(c.lockedTarget).captured > 0) c.lockedTarget = 0;
           else {
-            if (Math.hypot(c.body.position.x - t.box.position.x, c.body.position.z - t.box.position.z) < 1)
-              if (t.box.position.y - c.body.position.y < 2) {
-                c.health += 20;
+            if (Math.hypot(c.body.position.x - t.box.position.x, c.body.position.z - t.box.position.z) < WorldConfig.targets.collection.radius)
+              if (t.box.position.y - c.body.position.y < WorldConfig.targets.collection.verticalCheck) {
+                c.health += CreatureConfig.health.targetCollection.hpGain;
                 t.captured = 1;
                 c.lockedTarget = 0;
                 c.currentProg = getProgram();
                 t.box.material = mbox2;
+                c.creatureSize *= CreatureConfig.size.growth;
               }
           }
         }
@@ -836,7 +843,7 @@
           c.moveToward(t.box.position.x, t.box.position.z, 0.1);
           if (targets.get(c.lockedTarget).captured > 1) c.lockedTarget = 0;
           else {
-            if (Math.hypot(c.body.position.x - t.box.position.x, c.body.position.z - t.box.position.z) < 1) {
+            if (Math.hypot(c.body.position.x - t.box.position.x, c.body.position.z - t.box.position.z) < WorldConfig.targets.collection.radius) {
               t.captured = 2;
               t.box.material = mbox3;
               world.removeBody(t.body);
@@ -850,8 +857,17 @@
 
     function placeblock() {
       let c = creatures[me];
+
+      // Safety check: if Faith is 0 (Agnostic) or Temples doesn't exists, change program
+      if (c.faith === 0 || !Temples[c.faith] || Temples[c.faith].length === 0) {
+        console.warn('Creature has no valid temple (faith:', c.faith, ')');
+        c.currentProg = getProgram(); // torna a un altro comportamento
+        return;
+      }
+
       let tmp = Temples[c.faith];
       c.moveToward(tmp[0], tmp[1], 0.1);
+
       if (c.lockedTarget > 0) {
         let t = targets.get(c.lockedTarget);
         try {
@@ -862,8 +878,9 @@
           console.error('c.body:', c);
         }
       }
+
       let h = Math.hypot(c.body.position.x - tmp[0], c.body.position.z - tmp[1]);
-      if (h < 9) {
+      if (h < WorldConfig.temples.placement.radius) {
         let t = targets.get(c.lockedTarget);
         t.captured = 3;
         c.currentProg = getProgram();
@@ -875,7 +892,7 @@
         index -= yy * 3;
         let x = tmp[0] - 1 + index;
         let z = tmp[1] - 1 + yy;
-        let y = terrain.getHeight(tmp[0], tmp[1]) + 3 + lvl;
+        let y = terrain.getHeight(tmp[0], tmp[1]) + WorldConfig.temples.construction.baseHeight + lvl * WorldConfig.temples.construction.levelHeight;
         tmp[2]++;
         t.body.position.y += 5;
         const p0 = new CANNON.Vec3(t.body.position.x, t.body.position.y, t.body.position.z);
@@ -919,17 +936,28 @@
     }
 
     function getProgram() {
+      // Safety check: assicurati che me sia valido
+      if (me < 0 || me >= creatures.length || !creatures[me]) {
+        console.warn('getProgram called with invalid me:', me);
+        return haverest; // fallback sicuro
+      }
+
       let r = Math.random();
       creatures[me].lockedTarget = 0;
-      creatures[me].cooldown = 250 + Math.random() * 200;
-      if (creatures[me].health < 25) r += 0.4;
+      const cooldownMin = TimingConfig.creatures.behavior.min;
+      const cooldownMax = TimingConfig.creatures.behavior.max;
+      creatures[me].cooldown = cooldownMin + Math.random() * (cooldownMax - cooldownMin);
+
+      if (creatures[me].health < CreatureConfig.behavior.actions.pursue.healthModifier.threshold)
+        r += CreatureConfig.behavior.actions.pursue.healthModifier.bonus;
+
       if (r < 0.2) {
-        creatures[me].cooldown = 200;
+        creatures[me].cooldown = TimingConfig.creatures.behavior.rest;
         return haverest;
       }
       if (r < 0.4) return evade;
       if (r < 0.7) {
-        creatures[me].cooldown = 99999;
+        creatures[me].cooldown = TimingConfig.creatures.actions.findblock;
         return findblock;
       }
       return pursue;
@@ -1101,15 +1129,16 @@
 
 
     function envclamp(a) {
-      if (a > 63.5) return 63.5;
-      if (a < -63.5) return -63.5;
+      const limit = WorldConfig.boundaries.creatureClamp;
+      if (a > limit) return limit;
+      if (a < -limit) return -limit;
       return a;
     }
 
     let Temples = [[]];
 
-    for (let e = 1; e < 4; e++) {
-      let ang = e * twopi / 3 + Math.random();
+    for (let e = 1; e < 4; e++) { // Three temples for three gods
+      let ang = e * twopi / 5 + Math.random();
       let dst = 25 + Math.random() * 25;
       let x = dst * Math.cos(ang);
       let z = dst * Math.sin(ang);
@@ -1147,7 +1176,7 @@
       targets.forEach((target, key) => {
         target.box.position.copy(target.body.position);
         target.box.quaternion.copy(target.body.quaternion);
-        if (Math.hypot(target.body.position.x, target.body.position.z) > 63.5) {
+        if (Math.hypot(target.body.position.x, target.body.position.z) > WorldConfig.boundaries.targetClamp) {
           world.removeBody(target.body);
           scene.remove(target.box);
           targets.delete(key);
@@ -1279,7 +1308,7 @@
           let c = creatures[me];
           if (c.currentProg === null)
             c.currentProg = getProgram();
-          if (c.mode == 0) c.currentProg();
+          if (c.mode == 0 && typeof c.currentProg === 'function') c.currentProg();
           c.body.position.x = envclamp(c.body.position.x);
           c.body.position.z = envclamp(c.body.position.z);
           c.body.position.y = 1.2 * c.creatureSize + terrain.getHeight(c.body.position.x, c.body.position.z);
@@ -1335,11 +1364,15 @@
               if (Math.abs(c.position.y - danger.box.position.y) < 3)
                 if (Math.abs(c.position.z - danger.box.position.z) < 3) {
                   var dst = 1 + Math.hypot(c.position.x - danger.box.position.x, c.position.y - danger.box.position.y);
-                  c.health -= 6 * danger.strength / dst; //Curse Damage formula
+                  c.health -= CreatureConfig.health.dangerDamage.baseMultiplier * danger.strength / dst; //CURSE HP DECAY FORMULA
                 }
           });
           if (--c.cooldown <= 0) c.currentProg = getProgram();
-          c.health -= 0.03 * Math.sqrt(c.creatureSize); //CURSE FORMULA
+          /* No HP decay for Agnostics
+          if (c.faith !=0){
+            c.health -= CreatureConfig.health.decay.baseRate * Math.sqrt(c.creatureSize); //NATURAL HP DECAY FORMULA
+          }*/
+          c.health -= CreatureConfig.health.decay.baseRate * Math.sqrt(c.creatureSize); //NATURAL HP DECAY FORMULA
           if (c.health <= 0) {
             scene.remove(c);
             world.removeBody(c.body);
@@ -1388,10 +1421,11 @@
       }
 
       const camd = Math.hypot(camera.position.x, camera.position.z);
-      if (camd > 63.5) {
+      const cameraLimit = WorldConfig.boundaries.creatureClamp;
+      if (camd > cameraLimit) {
         const ang = Math.atan2(camera.position.z, camera.position.x);
-        camera.position.x = 63.5 * Math.cos(ang);
-        camera.position.z = 63.5 * Math.sin(ang);
+        camera.position.x = cameraLimit * Math.cos(ang);
+        camera.position.z = cameraLimit * Math.sin(ang);
       }
       const grnd = 0.5 + terrain.getHeight(camera.position.x, camera.position.z);
       if (camera.position.y < grnd) camera.position.y = grnd;
@@ -1405,7 +1439,7 @@
     var uptoAI = 1;
 
     /* askGod() ASYNC VERSION */
-    async function askGod() { //5 seconds loop - which God is operating the Turn - encoding of the url with creatures data
+    async function askGodOLD() { //5 seconds loop - which God is operating the Turn - encoding of the url with creatures data
       if (++uptoAI > 3) uptoAI = 1; //Avoids the same god to operate twice. Set 5 to operate with RNG God
 
       /* Creates Creatures Array */
@@ -1418,7 +1452,7 @@
       }
 
       //Handler array maps AI IDs to their respective call functions
-      const handlers = [null, askGemini, askClaude, askRandom, askGroq];
+      const handlers = godsData.handlers;
       const creaturesData = summ.join('^'); //All Creatures Parameters
 
       try {
@@ -1429,6 +1463,41 @@
         }
       } catch (error) {
         console.error(`God ${uptoAI} failed:`, error);
+      }
+
+      setTimeout(askGod, 5000); //Call again askGod() in 5 seconds
+    }
+
+    var uptoAI = 1;
+
+    async function askGod() {
+      // Cicla tra tutte e 3 le AI per la visualizzazione
+      if (++uptoAI > 3) uptoAI = 1;
+
+      /* Creates Creatures Array */
+      let l = creatures.length;
+      let summ = [];
+      for (let i = 0; i < l; i++) {
+        let m = creatures[i];
+        if (m.health > 0)
+          summ.push("" + m.position.x.toFixed(2) + "~" + m.position.z.toFixed(2) + "~" + m.health.toFixed(2) + '~' + m.faith);
+      }
+
+      // Usa sempre Ollama (god5) as LLM
+      let actualBackend = 5;
+
+      //Handler array maps AI IDs to their respective call functions
+      const handlers = godsData.handlers;
+      const creaturesData = summ.join('^'); //All Creatures Parameters
+
+      try {
+        //Calls Ollama but displays as uptoAI (1-5)
+        const result = await handlers[actualBackend](creaturesData, glast[uptoAI]);
+        if (result.success) {
+          doGodsWork(uptoAI, JSON.parse(result.message)); // uptoAI for the fake visualization
+        }
+      } catch (error) {
+        console.error(`God ${uptoAI} failed (using Ollama):`, error);
       }
 
       setTimeout(askGod, 5000); //Call again askGod() in 5 seconds
@@ -1532,7 +1601,7 @@
       }
     }
 
-    setTimeout(askGod, 2000);
+    setTimeout(askGod, TimingConfig.gods.firstActionDelay);
 
     animate();
 

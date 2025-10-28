@@ -2,7 +2,16 @@
 
 ## **1. Install Ollama**
 
-**TBD** 
+**Required**: Ollama running locally with llama3.2 model
+
+1) Install Ollama
+**curl -fsSL https://ollama.ai/install.sh | sh**
+
+Pull the required model
+**ollama pull llama3.2**
+
+# Start Ollama server with CORS enabled for web access
+OLLAMA_ORIGINS="*" ollama serve
 
 ## **2. Install Vercel**
 
