@@ -22,7 +22,7 @@ export function creatureLogic() {
         behavior: {
             cooldown: { min: 250, max: 450 },
             actions: {
-                haverest: { probability: 0.2, cooldown: 200 },
+                haveRest: { probability: 0.2, cooldown: 200 },
                 evade: { probability: 0.2 },
                 findblock: { probability: 0.3, cooldown: 99999 },
                 pursue: { probability: 0.3 }
@@ -31,7 +31,7 @@ export function creatureLogic() {
     };
 
     // Internal helper functions (simplified references)
-    function haverest() { return 'haverest'; }
+    function haveRest() { return 'haveRest'; }
     function evade() { return 'evade'; }
     function findblock() { return 'findblock'; }
     function pursue() { return 'pursue'; }
@@ -40,7 +40,7 @@ export function creatureLogic() {
     function getProgram(creatures, me) {
         if (me < 0 || me >= creatures.length || !creatures[me]) {
             console.warn('getProgram called with invalid me:', me);
-            return haverest;
+            return haveRest;
         }
 
         let r = Math.random();
@@ -58,7 +58,7 @@ export function creatureLogic() {
 
         if (r < 0.2) {
             creatures[me].cooldown = TimingConfig.creatures.behavior.rest;
-            return haverest;
+            return haveRest;
         }
         if (r < 0.4) return evade;
         if (r < 0.7) {

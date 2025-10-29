@@ -935,7 +935,7 @@
       return index;
     }
 
-    function haverest() {
+    function haveRest() {
     }
 
 
@@ -945,7 +945,7 @@
       // Safety check: assicurati che me sia valido
       if (me < 0 || me >= creatures.length || !creatures[me]) {
         console.warn('getProgram called with invalid me:', me);
-        return haverest; // fallback sicuro
+        return haveRest; // fallback sicuro
       }
 
       let r = Math.random();
@@ -959,7 +959,7 @@
 
       if (r < 0.2) {
         creatures[me].cooldown = TimingConfig.creatures.behavior.rest;
-        return haverest;
+        return haveRest;
       }
       if (r < 0.4) return evade;
       if (r < 0.7) {
@@ -1098,7 +1098,7 @@
       switch (creatures[a].currentProg) {
         case pursue: txt = 'Pursue'; break;
         case evade: txt = 'Evade'; break;
-        case haverest: txt = 'Rest'; break;
+        case haveRest: txt = 'Rest'; break;
         case findblock: txt = 'Find Block'; break;
         case placeblock: txt = 'Place Block'; break;
         default: txt = 'Custom';
