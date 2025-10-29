@@ -27,32 +27,26 @@ export const godsData = {
         agnostic: {
             health: 1.0,              // Neutral
             breed: 1.0,               // Neutral
-            timeDecay: false,         // MVP v3: NO time decay for Agnostics
         },
         god1: {  // Gemini
             health: 1.25,             // MVP v3: +25% HP
             breed: 0.70,              // MVP v3: -30% Breed capability
-            timeDecay: true,
         },
         god2: {  // Claude
             health: 0.80,             // MVP v3: -20% HP
             breed: 1.30,              // MVP v3: +30% Breed capability
-            timeDecay: true,
         },
         god3: {  // Random
             health: 1.0,              // Neutral
             breed: 1.0,               // Neutral
-            timeDecay: true,
         },
         god4: {  // GPT
             health: 1.0,              // Neutral
             breed: 1.0,               // Neutral
-            timeDecay: true,
         },
         god5: {  // Ollama
             health: 1.0,              // Neutral
             breed: 1.0,               // Neutral
-            timeDecay: true,
         },
     },
 
